@@ -1,0 +1,49 @@
+scoring:
+  red_threshold: 40
+  green_threshold: 70
+  mandatory_skills: []
+  bonus_weights:
+    python: 1.5
+    java: 1.2
+
+llm:
+  provider: "openai" # or "gemini"
+  model: "gpt-3.5-turbo" # or "gemini-pro"
+  temperature: 0.0
+
+email_templates:
+  red: |
+    Subject: Update on your application
+    
+    Dear {candidate_name},
+    
+    Thank you for your interest in the position. After reviewing your profile, we have decided not to move forward at this time.
+    
+    We appreciate your time and wish you the best in your job search.
+    
+    Best regards,
+    Hiring Team
+
+  yellow: |
+    Subject: Your application is under review
+    
+    Dear {candidate_name},
+    
+    Thank you for applying. We are currently reviewing your profile and it looks interesting. 
+    
+    We will be in touch shortly regarding next steps.
+    
+    Best regards,
+    Hiring Team
+
+  green: |
+    Subject: Interview Invitation
+    
+    Dear {candidate_name},
+    
+    We are impressed with your profile and would like to invite you for an interview!
+    
+    Please let us know your availability for the coming week.
+    
+    Best regards,
+    Hiring Team
