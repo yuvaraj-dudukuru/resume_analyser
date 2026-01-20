@@ -48,6 +48,26 @@ This tool solves these challenges by:
 
 ---
 
+## 🚀 Deployment
+
+**Note:** This is a Python application. It **cannot** run on GitHub Pages (which is for static HTML sites). We recommend **Streamlit Community Cloud** (Free).
+
+### Deploy to Streamlit Cloud
+
+1. Push your code to GitHub.
+2. Go to [share.streamlit.io](https://share.streamlit.io/) and sign in with GitHub.
+3. Click **"New App"**.
+4. Select your repository (`resume_analyser`), branch (`main`), and main file (`app.py`).
+5. **Secrets**: Click "Advanced Settings" -> "Secrets" and add your keys:
+
+    ```toml
+    OPENAI_API_KEY = "sk-..."
+    ```
+
+6. Click **Deploy**!
+
+---
+
 ## 🛠️ Installation
 
 ### Prerequisites
