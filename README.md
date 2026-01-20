@@ -14,29 +14,37 @@ High-volume recruitment often involves manually opening hundreds of resumes, Ctr
 
 - **Time-Consuming**: Hours wasted on irrelevant profiles.
 - **Inconsistent**: Different recruiters apply different standards.
-- **Prone to Error**: Keyword matching misses implied skills (e.g., "built a REST API" implies "Backend Development").
+- **Prone to Error**: Keyword matching misses implied skills.
 
 ### 💡 The Solution
 
 This tool solves these challenges by:
 
-1. **Extracting Data**: Automatically parsing contact info, experience, and raw text from PDF/DOCX files.
-2. **Intelligent Scoring**: Using LLMs (OpenAI/Gemini) to "read" the resume like a human and score it against the Job Description.
-3. **Automated Action**: Auto-categorizing candidates (Red/Yellow/Green) and generating personalized email drafts for each.
+1. **Extracting Data**: Automatically parsing contact info from PDF/DOCX files.
+2. **Intelligent Scoring**: Using LLMs (OpenAI/Gemini) to "read" the resume like a human.
+3. **Automated Action**: Auto-categorizing candidates and generating personalized email drafts.
 
 ---
 
-## ✨ Key Features
+## ✨ Key Features (v2.0)
 
-- **📄 Multi-Format Support**: Robust parsing for `.pdf` and `.docx` formats.
+- **📄 Advanced Parsing**:
+  - Multi-format support (`.pdf`, `.docx`).
+  - **Smart Name Extraction**: Uses regex and NLP heuristics to find candidate names, not just filenames.
+  - **Robust Error Handling**: Gracefully handles corrupted or encrypted files.
 - **🤖 Hybrid Scoring Engine**:
   - **Keyword Mode**: Fast, offline scoring based on weighted skills.
-  - **AI Mode**: Uses **OpenAI GPT** or **Google Gemini** for semantic understanding and reasoning.
-- **📊 Smart Categorization**: Automatically buckets candidates into *Green (Interview)*, *Yellow (Review)*, and *Red (Reject)*.
-- **📧 Email Automation**: Generates context-aware email drafts ready for sending.
-- **🖥️ Dual Interfaces**:
-  - **Web UI (Streamlit)**: Modern, drag-and-drop interface for recruiters.
-  - **CLI**: Powerful command-line tool for developers and batch processing.
+  - **AI Mode**: Uses **OpenAI GPT** or **Google Gemini** for semantic understanding.
+  - **Detailed Feedback**: Provides "Matched Keywords" and "Reasoning" for every score.
+- **🧹 Smart Processing**:
+  - **Duplicate Detection**: Auto-detects duplicate emails and keeps the best resume.
+  - **Summary Statistics**: Real-time dashboards of candidate potential.
+- **📧 Email Automation**:
+  - Generates context-aware email drafts.
+  - **Auto-Send**: Optional SMTP integration to send bulk emails directly from the UI.
+- **📊 Visual Analytics**:
+  - Interactive Pie Charts and Color-coded Data Tables in Streamlit.
+  - Excel export with multiple sheets (Summary, Shortlisted, All).
 
 ---
 
@@ -45,7 +53,7 @@ This tool solves these challenges by:
 ### Prerequisites
 
 - Python 3.8 or higher
-- (Optional) OpenAI or Google Gemini API Key for AI features
+- (Optional) OpenAI or Google Gemini API Key
 
 ### Steps
 
@@ -75,31 +83,20 @@ streamlit run app.py
 ```
 
 1. Open the URL provided (usually `http://localhost:8501`).
-2. Enter your **Job Description** (text).
-3. Upload **Resume Files** (PDF/DOCX).
-4. (Optional) Enter your **API Key** in the sidebar for AI Scoring.
-5. Click **Process Resumes** and download the Excel report.
+2. **Config**: Enter API Key and Email Settings in the sidebar.
+3. **Input**: Paste Job Description and Upload Resumes.
+4. **Analyze**: Click "Process Resumes". View dynamic charts and color-coded table.
+5. **Act**: Download Excel or click "Send Emails".
 
 ### Option 2: Command Line Interface (CLI)
 
-For integrating into pipelines or processing large batches without a UI.
-
-**Basic Usage:**
-
-```bash
-python main.py -i "./resumes" -j "job_description.txt" -o "report.xlsx"
-```
+For batch processing large datasets.
 
 **With AI Scoring:**
-Set your API key as an environment variable before running:
 
 ```bash
 # Windows
 set OPENAI_API_KEY=sk-your-key-here
-python main.py -i "./resumes" -j "job_description.txt"
-
-# Linux/Mac
-export GEMINI_API_KEY=AIza-your-key-here
 python main.py -i "./resumes" -j "job_description.txt"
 ```
 
@@ -107,18 +104,17 @@ python main.py -i "./resumes" -j "job_description.txt"
 
 ## ⚙️ Configuration
 
-The system behavior is controlled by `config.yaml`. You can customize thresholds, weights, and templates.
+The system behavior is controlled by `config.yaml`.
 
 ```yaml
 scoring:
   red_threshold: 40    # Scores below this are Rejected
   green_threshold: 70  # Scores above this are Interviewed
-  bonus_weights:       # Multipliers for critical skills
+  bonus_weights:       
     python: 1.5
-    java: 1.2
 
 llm:
-  provider: "openai"   # Default provider (auto-overridden by API key detection)
+  provider: "openai"   # Auto-detected based on key
   model: "gpt-3.5-turbo"
 
 email_templates:
@@ -127,35 +123,24 @@ email_templates:
     Dear {candidate_name}, ...
 ```
 
----
-
 ## 📂 Project Structure
 
 ```text
 resume-parser/
-├── app.py              # Streamlit Web Application entry point
-├── main.py             # CLI entry point
-├── config.yaml         # Configuration file
-├── requirements.txt    # Python dependencies
+├── app.py              # Streamlit Web Application
+├── main.py             # CLI Entry
 ├── src/
-│   ├── parser.py       # wrapper for pdfminer/python-docx
-│   ├── scorer.py       # specific scoring logic (Keyword + LLM)
-│   ├── email_gen.py    # template engine for emails
-│   ├── utils.py        # helpers (text sanitation, etc.)
-│   └── config.py       # config loader
-└── README.md           # Documentation
+│   ├── parser.py       # Regex & PDFMiner Logic
+│   ├── scorer.py       # Hybrid Scoring Engine
+│   ├── email_gen.py    # Template Engine
+│   ├── utils.py        # Stats, Duplicates, Cleaning
+└── ...
 ```
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository.
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`).
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`).
-4. Push to the branch (`git push origin feature/AmazingFeature`).
-5. Open a Pull Request.
+Contributions are welcome!
 
 ## 📄 License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+Distributed under the MIT License.

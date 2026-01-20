@@ -1,11 +1,13 @@
 import argparse
 import os
 import pandas as pd
+from datetime import datetime
+import glob
 from src.parser import ResumeParser
 from src.scorer import ResumeScorer
 from src.email_gen import EmailGenerator
 from src.config import load_config
-import glob
+from src.utils import clean_dataframe_for_excel, detect_duplicates, generate_summary_stats
 
 def main():
     parser = argparse.ArgumentParser(description="Resume Parser & Scorer CLI")
@@ -57,38 +59,61 @@ def main():
         # Parse
         data = resume_parser.parse_file(file_path)
         
-        # Score
-        score, matches, status = scorer.score(data["raw_text"], jd_text)
-        data["score"] = score
-        data["matched_keywords"] = matches
-        data["status"] = status
+        # Score (only if valid)
+        if not data.get("error"):
+            score, notes, status, matches = scorer.score(data["raw_text"], jd_text)
+            data["score"] = score
+            data["reasoning"] = notes
+            data["status"] = status
+            data["matched_keywords"] = matches
+        else:
+            data["score"] = 0
+            data["reasoning"] = data.get("notes", "Error")
+            data["status"] = "Error"
+            data["matched_keywords"] = ""
         
         # Email
         data["email_draft"] = email_gen.generate(data)
         
         results.append(data)
         
-    # Export
+    # DataFrame Logic
     df = pd.DataFrame(results)
     
+    # 1. Duplicate Detection
+    df = detect_duplicates(df)
+    
+    # 2. Summary Stats
+    stats = generate_summary_stats(df)
+    
+    print("\n--- Summary ---")
+    for k, v in stats.items():
+        print(f"{k}: {v}")
+    print("----------------")
+    
     # Formatting columns
-    cols = ["candidate_name", "email", "phone", "score", "status", "matched_keywords", "email_draft", "raw_text", "filename"]
+    cols = ["candidate_name", "email", "phone", "score", "status", "reasoning", "matched_keywords", "email_draft", "notes", "filename"]
     # Reorder if columns match
     available_cols = [c for c in cols if c in df.columns]
     df = df[available_cols]
     
-    print(f"Writing results to {args.output}...")
-    
-    # Clean data
-    from src.utils import clean_dataframe_for_excel
+    # Clean for Export
     df = clean_dataframe_for_excel(df)
     
+    print(f"Writing results to {args.output}...")
     with pd.ExcelWriter(args.output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='All Candidates')
+        
+        # Summary Sheet
+        pd.DataFrame([stats]).to_excel(writer, index=False, sheet_name='Summary')
+        
         if "status" in df.columns:
-            df[df['status'] == 'Green'].to_excel(writer, index=False, sheet_name='Shortlisted')
-            df[df['status'] == 'Yellow'].to_excel(writer, index=False, sheet_name='Under Review')
-            df[df['status'] == 'Red'].to_excel(writer, index=False, sheet_name='Rejected')
+            if 'Green' in df['status'].values:
+                df[df['status'] == 'Green'].to_excel(writer, index=False, sheet_name='Shortlisted')
+            if 'Yellow' in df['status'].values:
+                df[df['status'] == 'Yellow'].to_excel(writer, index=False, sheet_name='Under Review')
+            if 'Red' in df['status'].values:
+                df[df['status'] == 'Red'].to_excel(writer, index=False, sheet_name='Rejected')
 
     print("Done!")
 

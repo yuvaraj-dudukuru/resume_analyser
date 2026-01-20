@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.env
+*.xlsx
+.DS_Store
+resumes/
+.vscode/
+.idea/
+d:\asn\hr interview\Resume-Parser\__pycache__\

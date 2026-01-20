@@ -1,6 +1,7 @@
 import re
 import json
 import os
+import time
 
 class BasicScorer:
     def __init__(self, config):
@@ -15,11 +16,12 @@ class BasicScorer:
         jd_words = set(re.findall(r'\b\w{4,}\b', job_description.lower()))
         
         if not jd_words:
-            return 0, "No valid keywords in JD", "Red"
+            return 0, "No valid keywords in JD", "Red", ""
 
         resume_lower = resume_text.lower()
         
         matched_keywords = []
+        missing_keywords = []
         
         # Base score: percentage of matched keywords
         matches = 0
@@ -27,6 +29,8 @@ class BasicScorer:
             if word in resume_lower:
                 matches += 1
                 matched_keywords.append(word)
+            else:
+                missing_keywords.append(word)
                 
         if len(jd_words) == 0:
             match_percentage = 0
@@ -49,7 +53,14 @@ class BasicScorer:
         else:
             status = "Green"
             
-        return final_score, f"Matched {len(matched_keywords)} keywords: {', '.join(matched_keywords[:10])}...", status
+        # Notes
+        notes = f"Matched {len(matched_keywords)}/{len(jd_words)} keywords ({match_percentage:.1f}%)."
+        if missing_keywords:
+            notes += f" Missing: {', '.join(sorted(list(missing_keywords))[:5])}..."
+            
+        matched_str = ", ".join(matched_keywords[:10])
+            
+        return final_score, notes, status, matched_str
 
 
 class LLMScorer:
@@ -77,8 +88,8 @@ class LLMScorer:
         Output valid JSON with these fields:
         - score (integer 0-100)
         - status (Red, Yellow, Green)
-        - reasoning (concise summary of why)
-        - matched_keywords (list of key skills found)
+        - reasoning (brief summary of why)
+        - matched_keywords (comma separated string of top skills found)
         """
         
         try:
@@ -87,17 +98,21 @@ class LLMScorer:
             elif self.provider == "gemini":
                 response = self._call_gemini(prompt)
             else:
-                return 0, "Invalid LLM Provider", "Red"
+                return 0, "Invalid LLM Provider", "Red", ""
                 
             # Parse JSON
-            # Clean possible markdown fencing
             cleaned = response.replace("```json", "").replace("```", "").strip()
             data = json.loads(cleaned)
             
-            return data.get("score", 0), data.get("reasoning", "No reasoning"), data.get("status", "Red")
+            # Extract list or string
+            matched = data.get("matched_keywords", "")
+            if isinstance(matched, list):
+                matched = ", ".join(matched)
+            
+            return data.get("score", 0), data.get("reasoning", "No reasoning"), data.get("status", "Red"), matched
             
         except Exception as e:
-            return 0, f"LLM Error: {str(e)}", "Red"
+            return 0, f"LLM Error: {str(e)}", "Red", ""
 
     def _call_openai(self, prompt):
         from openai import OpenAI
@@ -115,24 +130,19 @@ class LLMScorer:
 
     def _call_gemini(self, prompt):
         import google.generativeai as genai
-        import time
         genai.configure(api_key=self.api_key)
         
         # 1. Get all valid models
         valid_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        print(f"Available Gemini Models: {valid_models}")
         
         # 2. Sort them by preference
-        # We want 'flash' first (free/fast), then 'pro', then anything else
-        # Also avoid experimental/latest if possible to avoid instability? Or try them last.
-        
         def model_priority(name):
             n = name.lower()
-            if 'flash' in n and '1.5' in n: return 0 # Highest priority: gemini-1.5-flash
+            if 'flash' in n and '1.5' in n: return 0 
             if 'flash' in n: return 1
             if 'pro' in n and '1.5' in n: return 2
             if 'pro' in n: return 3
-            return 4 # Lowest priority
+            return 4 
             
         sorted_models = sorted(valid_models, key=model_priority)
         
@@ -141,7 +151,7 @@ class LLMScorer:
         # 3. Try them in order until one works
         for model_name in sorted_models:
             try:
-                print(f"Trying model: {model_name}...")
+                # print(f"Trying model: {model_name}...") 
                 model = genai.GenerativeModel(model_name)
                 response = model.generate_content(prompt)
                 
@@ -150,11 +160,8 @@ class LLMScorer:
                 return response.text
                 
             except Exception as e:
-                print(f"Failed with {model_name}: {e}")
+                # print(f"Failed with {model_name}: {e}")
                 last_error = e
-                # If it's a 429 (Quota), we should definitely try another model
-                # If it's a 404 (Not Found), same.
-                # Only stop if it's Authentication Error maybe? But we can just try all.
                 continue
                 
         raise last_error if last_error else ValueError("No working Gemini models found.")
